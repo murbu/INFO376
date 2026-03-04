@@ -1,6 +1,8 @@
+import React from "react"
 import { useState } from "react"
 import training from "./data/songs.json"
 import { recommendSongs } from "./model/recommender"
+import "./App.css"
 
 export default function App(){
 
@@ -12,12 +14,25 @@ export default function App(){
   function search(text){
 
     setQuery(text)
-
+  
+    if(text.length < 2){
+      setResults([])
+      return
+    }
+  
     const filtered = training.filter(song =>
+      song.name &&
       song.name.toLowerCase().includes(text.toLowerCase())
     )
-
+  
     setResults(filtered.slice(0,10))
+  }
+
+  function formatArtist(artists){
+    if(Array.isArray(artists)){
+      return artists.join(", ")
+    }
+    return artists
   }
 
   function addSong(song){
@@ -33,54 +48,94 @@ export default function App(){
       alert("Please select at least one song")
       return
     }
-
+  
     const ids = selected.map(s => s.id)
-
+  
     const recs = recommendSongs(ids, training)
-
+      .filter(song => !ids.includes(song.id))
+  
     setRecommendations(recs.slice(0,10))
   }
 
   return (
-
-    <div style={{padding:40, fontFamily:"Arial"}}>
-
-      <h1>Spotify Recommender</h1>
-
+    <div className="container">
+  
+      <h1 className="title">Spotify Recommender</h1>
+  
       <input
-        placeholder="Search songs"
+        className="search"
+        placeholder="Search for a song..."
         value={query}
         onChange={e => search(e.target.value)}
-        style={{padding:"8px", width:"300px"}}
       />
+  
+      <div className="grid">
+  
+        {/* SEARCH RESULTS */}
+        <div className="card">
+          <h2>Search Results</h2>
+  
+          {results.map(song => (
+            <div className="songRow" key={song.id}>
 
-      <h3>Search Results</h3>
+              <div className="songInfo">
+                <div>
+                  {song.name} - {formatArtist(song.artists)}
+                </div>
 
-      {results.map(song => (
-        <div key={song.id}>
-          {song.name} - {song.artists}
-          <button onClick={()=>addSong(song)}>Add</button>
+                <div className="genre">
+                  {Array.isArray(song.genre)
+                    ? song.genre.join(", ")
+                    : song.genre ?? "Unknown genre"}
+                </div>
+              </div>
+
+              <button onClick={() => addSong(song)}>
+                Add
+              </button>
+
+            </div>
+          ))}
         </div>
-      ))}
-
-      <h3>Selected Songs</h3>
-
-      {selected.map(song => (
-        <div key={song.id}>{song.name}</div>
-      ))}
-
-      <button onClick={generate}>
-        Generate Playlist
-      </button>
-
-      <h3>Recommended Songs</h3>
-
-      {recommendations.map(song => (
-        <div key={song.id}>
-          {song.name} — score {song.final_score.toFixed(3)}
+  
+        {/* SELECTED SONGS */}
+        <div className="card">
+          <h2>Selected Songs</h2>
+  
+          {selected.map(song => (
+            <div key={song.id} className="songRow">
+              {song.name}
+            </div>
+          ))}
+  
+          <button className="generate" onClick={generate}>
+            Generate Playlist
+          </button>
         </div>
-      ))}
+  
+      </div>
+  
+      {/* RECOMMENDATIONS */}
+      <div className="card recommendations">
+        <h2>Recommended Songs</h2>
+  
+        {recommendations.map(song => (
+          <div key={song.id} className="songRow">
+            <span>
+              {song.name} - {formatArtist(song.artists)}
+              {song.avg_artist_popularity < 40 && " (niche)"}
 
+              <div className="genre">
+                {song.genre ?? "Unknown genre"}
+              </div>
+            </span>
+            <span className="score">
+              score {(song.final_score * 100).toFixed(2)}
+            </span>
+          </div>
+        ))}
+      </div>
+  
     </div>
   )
 }
