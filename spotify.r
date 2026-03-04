@@ -35,4 +35,4 @@ check_low_pop_ratio(validation)
 write.csv(training, "training.csv", row.names = FALSE)
 write.csv(testing, "testing.csv", row.names = FALSE)
 write.csv(validation, "validation.csv", row.names = FALSE)
-
+write.csv(songs_shuffled, "combined_data.csv", row.names = FALSE)
