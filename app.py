@@ -8,7 +8,7 @@ app = FastAPI()
 train_data = pd.read_csv("data/training.csv")
 
 # Features used for similarity
-audio_features = [
+features = [
     "danceability",
     "energy",
     "key",
@@ -25,11 +25,11 @@ audio_features = [
 track_pool = train_data.drop_duplicates(subset="id").reset_index(drop=True)
 
 scaler = MinMaxScaler()
-scaled_features = scaler.fit_transform(track_pool[audio_features])
+scaled_features = scaler.fit_transform(track_pool[features])
 
 track_matrix = pd.DataFrame(
     scaled_features,
-    columns=audio_features
+    columns=features
 )
 
 feature_weights = {
@@ -80,13 +80,13 @@ def recommend(user_tracks: list[str]):
         return {"error": "No matching tracks found"}
 
     # Build user taste profile
-    user_profile = user_df[audio_features].mean().values.reshape(1, -1)
+    user_profile = user_df[features].mean().values.reshape(1, -1)
 
     # Apply same scaling
     user_profile = scaler.transform(user_profile)
 
     # Apply feature weighting
-    user_profile_df = pd.DataFrame(user_profile, columns=audio_features)
+    user_profile_df = pd.DataFrame(user_profile, columns=features)
 
     for col, weight in feature_weights.items():
         if col in user_profile_df.columns:
