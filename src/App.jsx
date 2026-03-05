@@ -10,24 +10,32 @@ export default function App(){
   const [results,setResults] = useState([])
   const [selected,setSelected] = useState([])
   const [recommendations,setRecommendations] = useState([])
+  const [songDetails, setSongDetails] = useState(null)
 
   function search(text){
 
     setQuery(text)
   
-    if(text.length < 2){
-      setResults([])
-      return
-    }
+    const keywords = text
+      .toLowerCase()
+      .split(" ")
+      .filter(k => k.length > 0)
   
-    const filtered = training.filter(song =>
-      song.name &&
-      song.name.toLowerCase().includes(text.toLowerCase())
-    )
+    const filtered = training.filter(song => {
+  
+      const name = song.name?.toLowerCase() || ""
+      const artists = song.artists?.toString().toLowerCase() || ""
+      const genre = (song.genre ?? song.track_genre ?? "").toLowerCase()
+  
+      const searchable = name + " " + artists + " " + genre
+  
+      return keywords.every(word => searchable.includes(word))
+  
+    })
   
     setResults(filtered.slice(0,10))
   }
-
+  
   function formatArtist(artists){
     if(Array.isArray(artists)){
       return artists.join(", ")
@@ -40,6 +48,14 @@ export default function App(){
     if(!selected.find(s => s.id === song.id)){
       setSelected([...selected,song])
     }
+  }
+
+  function removeSong(songId){
+
+    const updated = selected.filter(song => song.id !== songId)
+  
+    setSelected(updated)
+  
   }
 
   function generate(){
@@ -55,6 +71,32 @@ export default function App(){
       .filter(song => !ids.includes(song.id))
   
     setRecommendations(recs.slice(0,10))
+  }
+
+  function FeatureBar({ label, value }) {
+
+    const percentage = Math.round(value * 100)
+  
+    return (
+      <div className="featureRow">
+  
+        <div className="featureLabel">
+          {label}
+        </div>
+  
+        <div className="featureBarContainer">
+          <div
+            className="featureBar"
+            style={{ width: `${percentage}%` }}
+          ></div>
+        </div>
+  
+        <div className="featureValue">
+          {percentage}
+        </div>
+  
+      </div>
+    )
   }
 
   return (
@@ -76,7 +118,11 @@ export default function App(){
           <h2>Search Results</h2>
   
           {results.map(song => (
-            <div className="songRow" key={song.id}>
+            <div
+            className="songRow"
+            key={song.id}
+            onClick={() => setSongDetails(song)}
+            >
 
               <div className="songInfo">
                 <div>
@@ -104,7 +150,18 @@ export default function App(){
   
           {selected.map(song => (
             <div key={song.id} className="songRow">
-              {song.name}
+
+              <span>
+                {song.name} — {song.artists}
+              </span>
+
+              <button
+                className="delete"
+                onClick={() => removeSong(song.id)}
+              >
+                Remove
+              </button>
+
             </div>
           ))}
   
@@ -114,6 +171,26 @@ export default function App(){
         </div>
   
       </div>
+
+      {/* Song Feature Panel */}
+      {songDetails && (
+
+      <div className="card featurePanel">
+
+        <h2>Song Features</h2>
+
+        <p><b>{songDetails.name}</b></p>
+        <p>{songDetails.artists}</p>
+        <p>{songDetails.genre}</p>
+
+        <FeatureBar label="Danceability" value={songDetails.danceability}/>
+        <FeatureBar label="Energy" value={songDetails.energy}/>
+        <FeatureBar label="Speechiness" value={songDetails.speechiness}/>
+        <FeatureBar label="Liveness" value={songDetails.liveness}/>
+
+      </div>
+
+      )}
   
       {/* RECOMMENDATIONS */}
       <div className="card recommendations">

@@ -66,3 +66,49 @@ body{
   .score{
     color:#aaa;
   }
+
+  .featurePanel{
+
+    margin-top:20px;
+    padding:20px;
+    background:#1e1e1e;
+    border-radius:10px;
+  
+  }
+
+  .bar{
+    height:8px;
+    background:#1db954;
+    border-radius:4px;
+  }
+
+  .featureRow{
+    display:flex;
+    align-items:center;
+    margin:8px 0;
+  }
+  
+  .featureLabel{
+    width:120px;
+    font-size:14px;
+  }
+  
+  .featureBarContainer{
+    flex:1;
+    background:#333;
+    height:8px;
+    border-radius:4px;
+    overflow:hidden;
+    margin:0 10px;
+  }
+  
+  .featureBar{
+    height:100%;
+    background:#1db954;
+  }
+  
+  .featureValue{
+    width:40px;
+    text-align:right;
+    font-size:12px;
+  }

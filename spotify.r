@@ -9,6 +9,7 @@ df <- read.csv("songs.csv")
 songs_df <- df %>% drop_na() 
 songs_df <- df %>% select('id','name','artists','danceability','energy','key',
               'loudness','speechiness','liveness','tempo','duration_ms','year','genre','avg_artist_popularity')
+songs_df <- songs_df %>% distinct(name, .keep_all = TRUE)
 
 # Shuffle the dataset randomly and split dataset into three equal parts:
 # testing, training, and validation

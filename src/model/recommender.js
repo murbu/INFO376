@@ -7,8 +7,7 @@ const audio_features = [
   "liveness",
   "tempo",
   "duration_ms",
-  "year",
-  "avg_artist_popularity"
+  "year"
 ]
 
 const feature_weights = {
@@ -20,16 +19,15 @@ const feature_weights = {
   liveness: 1.5,
   tempo: 0.5,
   duration_ms: 0.3,
-  year: 0.5,
-  avg_artist_popularity: 0.8
+  year: 0.5
 }
 
-const alpha = 0.82
-const niche_weight = 0.09
-const artist_weight = 0.025
-const genre_weight = 0.06
+const alpha = 0.80
+const niche_weight = 0.05
+const genre_weight = 0.15
 
-const best_k = 40
+const best_k = 29
+
 
 
 // COSINE SIMILARITY
@@ -49,6 +47,7 @@ function cosineSimilarity(a, b) {
 }
 
 
+
 // BUILD WEIGHTED VECTOR
 function buildVector(track) {
 
@@ -58,6 +57,7 @@ function buildVector(track) {
   })
 
 }
+
 
 
 // AVERAGE USER PROFILE
@@ -75,6 +75,7 @@ function averageVector(vectors) {
   return avg.map(v => v / vectors.length)
 
 }
+
 
 
 // MAIN RECOMMENDER
@@ -95,15 +96,8 @@ export function recommendSongs(userTrackIds, trackPool) {
   // USER GENRES
   const userGenres = new Set(
     userTracks
-      .map(t => t.genre)
+      .map(t => t.genre ?? t.track_genre)
       .filter(Boolean)
-  )
-
-
-  // USER ARTISTS
-  const userArtists = new Set(
-    userTracks
-      .flatMap(t => t.artists || [])
   )
 
 
@@ -122,11 +116,12 @@ export function recommendSongs(userTrackIds, trackPool) {
   })
 
 
-  // KNN
+  // KNN NEIGHBORS
   const neighbors = similarities
     .filter(t => !userTrackIds.includes(t.id))
     .sort((a,b) => b.similarity - a.similarity)
     .slice(0, best_k)
+
 
 
   // APPLY SCORING
@@ -136,19 +131,17 @@ export function recommendSongs(userTrackIds, trackPool) {
       1 - ((track.avg_artist_popularity ?? 50) / 100)
 
 
-    const artist_match =
-      (track.artists || []).some(a => userArtists.has(a))
-        ? 1 : 0
-
+    const trackGenre = track.genre ?? track.track_genre
 
     const genre_match =
-      userGenres.has(track.genre) ? 1 : 0
+      trackGenre && userGenres.has(trackGenre)
+        ? 1
+        : 0
 
 
     const final_score =
       alpha * track.similarity +
       niche_weight * niche_score +
-      artist_weight * artist_match +
       genre_weight * genre_match
 
 
@@ -159,35 +152,10 @@ export function recommendSongs(userTrackIds, trackPool) {
 
   })
 
-
-  // SORT BY SCORE
+  // SORT BY FINAL SCORE
   const sorted = ranked.sort((a,b) => b.final_score - a.final_score)
 
-
-  // SPLIT NICHE VS MAINSTREAM
-  const niche = sorted.filter(
-    t => (t.avg_artist_popularity ?? 50) < 40
-  )
-
-  const mainstream = sorted.filter(
-    t => (t.avg_artist_popularity ?? 50) >= 40
-  )
-
-
-  // GUARANTEE NICHE ARTISTS
-  const guaranteedNiche = niche.slice(0,3)
-
-  const remaining = [
-    ...niche.slice(3),
-    ...mainstream
-  ]
-
-
-  const finalList = [
-    ...guaranteedNiche,
-    ...remaining
-  ]
-
+  const finalList = sorted
 
   // REMOVE DUPLICATES
   const unique = []
@@ -195,15 +163,12 @@ export function recommendSongs(userTrackIds, trackPool) {
 
   for (const song of finalList) {
 
-    const key = song.name + (song.artists?.join("") ?? "")
-
-    if (!seen.has(key)) {
-      seen.add(key)
+    if (!seen.has(song.id)) {
+      seen.add(song.id)
       unique.push(song)
     }
 
   }
-
 
   // RETURN TOP 10
   return unique.slice(0,10)
