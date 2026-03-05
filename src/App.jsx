@@ -73,6 +73,42 @@ export default function App(){
     setRecommendations(recs.slice(0,10))
   }
 
+  function generate(){
+
+    if(selected.length === 0){
+      alert("Please select at least one song")
+      return
+    }
+  
+    const ids = selected.map(s => s.id)
+  
+    const recs = recommendSongs(ids, training)
+      .filter(song => !ids.includes(song.id))
+  
+    const finalRecs = recs.slice(0,10)
+  
+    setRecommendations(finalRecs)
+  
+    console.log("Recommended Songs + Features:")
+  
+    finalRecs.forEach(song => {
+  
+      console.log({
+        name: song.name,
+        artist: song.artists,
+        genre: song.genre,
+        danceability: song.danceability,
+        energy: song.energy,
+        speechiness: song.speechiness,
+        liveness: song.liveness,
+        tempo: song.tempo,
+        loudness: song.loudness,
+        score: song.final_score
+      })
+  
+    })
+  }
+
   function FeatureBar({ label, value }) {
 
     const percentage = Math.round(value * 100)
