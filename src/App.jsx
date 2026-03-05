@@ -70,21 +70,6 @@ export default function App(){
     const recs = recommendSongs(ids, training)
       .filter(song => !ids.includes(song.id))
   
-    setRecommendations(recs.slice(0,10))
-  }
-
-  function generate(){
-
-    if(selected.length === 0){
-      alert("Please select at least one song")
-      return
-    }
-  
-    const ids = selected.map(s => s.id)
-  
-    const recs = recommendSongs(ids, training)
-      .filter(song => !ids.includes(song.id))
-  
     const finalRecs = recs.slice(0,10)
   
     setRecommendations(finalRecs)
@@ -103,6 +88,7 @@ export default function App(){
         liveness: song.liveness,
         tempo: song.tempo,
         loudness: song.loudness,
+        artist_popularity: song.avg_artist_popularity,
         score: song.final_score
       })
   

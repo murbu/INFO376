@@ -25,111 +25,88 @@ const feature_weights = {
 const alpha = 0.80
 const niche_weight = 0.05
 const genre_weight = 0.15
-
 const best_k = 29
 
 
-
 // COSINE SIMILARITY
-function cosineSimilarity(a, b) {
+function cosineSimilarity(a, b){
 
   let dot = 0
   let normA = 0
   let normB = 0
 
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i]
-    normA += a[i] * a[i]
-    normB += b[i] * b[i]
+  for(let i=0;i<a.length;i++){
+    dot += a[i]*b[i]
+    normA += a[i]*a[i]
+    normB += b[i]*b[i]
   }
 
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB))
+  return dot/(Math.sqrt(normA)*Math.sqrt(normB))
 }
 
-
-
 // BUILD WEIGHTED VECTOR
-function buildVector(track) {
+function buildVector(track){
 
-  return audio_features.map(f => {
+  return audio_features.map(f=>{
     const v = track[f] ?? 0
     return v * feature_weights[f]
   })
-
 }
 
-
-
-// AVERAGE USER PROFILE
-function averageVector(vectors) {
-
-  const length = vectors[0].length
-  const avg = new Array(length).fill(0)
-
-  vectors.forEach(v => {
-    for (let i = 0; i < length; i++) {
-      avg[i] += v[i]
-    }
-  })
-
-  return avg.map(v => v / vectors.length)
-
-}
-
-
-
-// MAIN RECOMMENDER
-export function recommendSongs(userTrackIds, trackPool) {
+export function recommendSongs(userTrackIds, trackPool){
 
   const userTracks = trackPool.filter(t =>
     userTrackIds.includes(t.id)
   )
 
-  if (userTracks.length === 0) return []
+  if(userTracks.length===0) return []
 
+  // STORE BEST SIMILARITY PER SONG
+  const candidateMap = new Map()
 
-  // BUILD USER PROFILE
-  const userVectors = userTracks.map(buildVector)
-  const userProfile = averageVector(userVectors)
+  // QUERY KNN PER INPUT SONG
+  userTracks.forEach(track=>{
+
+    const trackVector = buildVector(track)
+
+    const similarities = trackPool.map(song=>{
+
+      const vec = buildVector(song)
+
+      const sim = cosineSimilarity(trackVector, vec)
+
+      return {
+        ...song,
+        cosine_sim: sim
+      }
+    })
+
+    const neighbors = similarities
+      .filter(t=>!userTrackIds.includes(t.id))
+      .sort((a,b)=>b.cosine_sim-a.cosine_sim)
+      .slice(0,best_k)
+
+    neighbors.forEach(song=>{
+
+      if(!candidateMap.has(song.id) || candidateMap.get(song.id).cosine_sim < song.cosine_sim){
+        candidateMap.set(song.id, song)
+      }
+    })
+  })
+
+  const candidates = Array.from(candidateMap.values())
 
 
   // USER GENRES
   const userGenres = new Set(
-    userTracks
-      .map(t => t.genre ?? t.track_genre)
-      .filter(Boolean)
+    userTracks.map(t => t.genre ?? t.track_genre).filter(Boolean)
   )
 
-
-  // COMPUTE SIMILARITY
-  const similarities = trackPool.map(track => {
-
-    const vector = buildVector(track)
-
-    const similarity = cosineSimilarity(userProfile, vector)
-
-    return {
-      ...track,
-      similarity
-    }
-
-  })
-
-
-  // KNN NEIGHBORS
-  const neighbors = similarities
-    .filter(t => !userTrackIds.includes(t.id))
-    .sort((a,b) => b.similarity - a.similarity)
-    .slice(0, best_k)
-
-
-
-  // APPLY SCORING
-  const ranked = neighbors.map(track => {
+  // FINAL SCORING
+  const ranked = candidates.map(track=>{
 
     const niche_score =
       1 - ((track.avg_artist_popularity ?? 50) / 100)
-
 
     const trackGenre = track.genre ?? track.track_genre
 
@@ -138,39 +115,17 @@ export function recommendSongs(userTrackIds, trackPool) {
         ? 1
         : 0
 
-
     const final_score =
-      alpha * track.similarity +
+      alpha * track.cosine_sim +
       niche_weight * niche_score +
       genre_weight * genre_match
-
 
     return {
       ...track,
       final_score
     }
-
   })
 
-  // SORT BY FINAL SCORE
-  const sorted = ranked.sort((a,b) => b.final_score - a.final_score)
-
-  const finalList = sorted
-
-  // REMOVE DUPLICATES
-  const unique = []
-  const seen = new Set()
-
-  for (const song of finalList) {
-
-    if (!seen.has(song.id)) {
-      seen.add(song.id)
-      unique.push(song)
-    }
-
-  }
-
-  // RETURN TOP 10
-  return unique.slice(0,10)
-
+  const sorted = ranked.sort((a,b)=>b.final_score-a.final_score)
+  return sorted.slice(0,10)
 }
