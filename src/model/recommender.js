@@ -22,10 +22,8 @@ const feature_weights = {
   year: 0.5
 }
 
-const alpha = 0.82
 const niche_weight = 0.17
 const artist_weight = 0.01
-
 
 const scaler_mean = [
   0.527332496,
@@ -37,9 +35,9 @@ const scaler_mean = [
   122.818024,
   237284.549,
   2007.11414
-  ]
-  
-  const scaler_scale = [
+]
+
+const scaler_scale = [
   0.172371906,
   0.245456918,
   3.55274681,
@@ -49,7 +47,7 @@ const scaler_mean = [
   29.4469738,
   96543.4258,
   13.6186277
-  ]
+]
 
 const best_k = 29
 
@@ -110,50 +108,67 @@ export function recommendSongs(userTrackIds, trackPool){
 
   if(userTracks.length===0) return []
 
-
   const userGenres = new Set(userTracks.map(t=>t.genre))
   const userArtists = new Set(userTracks.map(t=>t.artists))
 
 
-  // build centroid query vector
+  // centroid query vector
   const userVectors = userTracks.map(buildVector)
   const queryVector = averageVector(userVectors)
 
-  // compute max popularity once
+
+  // compute max popularity safely
   let maxPop = 0
   for (const t of trackPool) {
     const pop = t.avg_artist_popularity ?? 0
     if (pop > maxPop) maxPop = pop
   }
 
-  // compute similarity to ALL tracks
   const candidates = trackPool.map(track => {
 
     const vec = buildVector(track)
-
+  
     const similarity = cosineSimilarity(queryVector, vec)
-
-    const rawPop = track.avg_artist_popularity ?? 20
-
-    // prevent extreme niche boost
+  
+    const rawPop = track.avg_artist_popularity ?? 30
     const pop = Math.max(rawPop, 20)
-
-    const niche_score = 1 - (pop / maxPop)
-
+  
+    // niche score
+    let niche_score = 1 - (pop / maxPop)
+    niche_score = Math.min(niche_score, 0.8)
+  
+    // artist match
     const artist_match =
       userArtists.has(track.artists) ? 1 : 0
-
-    const final_score = similarity * (1 + niche_weight * niche_score)
-
+  
+    const similarity_score = similarity * 0.80
+  
+    const niche_bonus =
+      niche_score * 0.12
+  
+    const popularity_bonus =
+      (pop / maxPop) * 0.07
+  
+    const artist_bonus =
+      artist_match * 0.01
+  
+    const final_score =
+      similarity_score +
+      niche_bonus +
+      popularity_bonus +
+      artist_bonus
+  
     return {
       ...track,
-      similarity_score: similarity,
-      niche_score,
-      artist_match,
+      similarity_score,
+      niche_bonus,
+      popularity_bonus,
+      artist_bonus,
       final_score
     }
-
+  
   })
+
 
   const filtered = candidates
     .filter(song =>
