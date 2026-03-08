@@ -1,3 +1,4 @@
+// define metrics and weights for the recommendation algorithm
 const audio_features = [
   "danceability",
   "energy",
@@ -22,9 +23,7 @@ const feature_weights = {
   year: 0.5
 }
 
-const niche_weight = 0.17
-const artist_weight = 0.01
-
+// precomputed means and scales for standardization, based on training data
 const scaler_mean = [
   0.527332496,
   0.670965291,
@@ -49,11 +48,12 @@ const scaler_scale = [
   13.6186277
 ]
 
+// number of recommendations to return (best_k computed from validation data)
 const best_k = 29
 
-
+// compute cosine similarity between two vectors
 function cosineSimilarity(a, b){
-
+  // compute dot product to see how closely aligned the vectors are
   let dot = 0
   let normA = 0
   let normB = 0
@@ -67,7 +67,7 @@ function cosineSimilarity(a, b){
   return dot / (Math.sqrt(normA) * Math.sqrt(normB) || 1)
 }
 
-
+// gets value from each track and build vector of standardized and weighted features
 function buildVector(track){
 
   return audio_features.map((f, i)=>{
@@ -82,7 +82,7 @@ function buildVector(track){
   })
 }
 
-
+// compute the average vector of a set of vectors
 function averageVector(vectors){
 
   const length = vectors[0].length
@@ -99,65 +99,60 @@ function averageVector(vectors){
 }
 
 
-
+// main recommendation function
+// takes in user's track ids and the pool of tracks to recommend from
 export function recommendSongs(userTrackIds, trackPool){
 
+  // get only the user's tracks from the pool
   const userTracks = trackPool.filter(t =>
     userTrackIds.includes(t.id)
   )
 
-  if(userTracks.length===0) return []
+  if (userTracks.length === 0) return []
 
-  const userGenres = new Set(userTracks.map(t=>t.genre))
-  const userArtists = new Set(userTracks.map(t=>t.artists))
-
+  // collect user's genres and artists for filtering and bonus scoring
+  const userGenres = new Set(userTracks.map(t => t.genre))
+  const userArtists = new Set(userTracks.map(t => t.artists))
 
   // centroid query vector
   const userVectors = userTracks.map(buildVector)
   const queryVector = averageVector(userVectors)
 
-
-  // compute max popularity safely
-  let maxPop = 0
-  for (const t of trackPool) {
-    const pop = t.avg_artist_popularity ?? 0
-    if (pop > maxPop) maxPop = pop
-  }
-
   const candidates = trackPool.map(track => {
 
     const vec = buildVector(track)
-  
     const similarity = cosineSimilarity(queryVector, vec)
-  
+
     const rawPop = track.avg_artist_popularity ?? 30
     const pop = Math.max(rawPop, 20)
-  
-    // niche score
-    let niche_score = 1 - (pop / maxPop)
-    niche_score = Math.min(niche_score, 0.8)
-  
+
+
+    // niche artist rule: popularity below 60
+    let niche_bonus = 0
+    let popularity_bonus = 0
+
     // artist match
-    const artist_match =
-      userArtists.has(track.artists) ? 1 : 0
-  
-    const similarity_score = similarity * 0.80
-  
-    const niche_bonus =
-      niche_score * 0.12
-  
-    const popularity_bonus =
-      (pop / maxPop) * 0.07
-  
-    const artist_bonus =
-      artist_match * 0.01
-  
+    const artist_match = userArtists.has(track.artists) ? 1 : 0
+
+    // scoring
+    const similarity_score = similarity * 0.89
+   
+    if (similarity > 0.82) {
+      if (pop < 60) {
+        niche_bonus = 0.04
+      } else if (pop >= 60) {
+        popularity_bonus = 0.04
+      }
+    }
+    const artist_bonus = artist_match * 0.03
+
+
     const final_score =
       similarity_score +
       niche_bonus +
       popularity_bonus +
       artist_bonus
-  
+
     return {
       ...track,
       similarity_score,
@@ -166,33 +161,28 @@ export function recommendSongs(userTrackIds, trackPool){
       artist_bonus,
       final_score
     }
-  
   })
 
 
-  const filtered = candidates
-    .filter(song =>
+  // filter out songs the user already knows and those that don't match user's genres
+  const filtered = candidates.filter(song =>
       !userTrackIds.includes(song.id) &&
       userGenres.has(song.genre)
     )
-
 
   const seen = new Set()
 
   const unique = filtered.filter(song=>{
 
-    const key = song.name + song.artists
+  const key = song.name + song.artists
 
-    if(seen.has(key)) return false
-
+  if(seen.has(key)) return false
     seen.add(key)
 
     return true
   })
 
-
   const sorted = unique.sort((a,b)=>b.final_score-a.final_score)
 
   return sorted.slice(0,best_k)
-
 }

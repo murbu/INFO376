@@ -77,22 +77,43 @@ export default function App(){
     console.log("Recommended Songs + Features:")
   
     finalRecs.forEach(song => {
-  
       console.log({
         name: song.name,
         artist: song.artists,
         genre: song.genre,
+  
         danceability: song.danceability,
         energy: song.energy,
         speechiness: song.speechiness,
         liveness: song.liveness,
-        tempo: song.tempo,
-        loudness: song.loudness,
+  
         artist_popularity: song.avg_artist_popularity,
+  
+        similarity_score: song.similarity_score,
+        niche_bonus: song.niche_bonus,
+        popularity_bonus: song.popularity_bonus,
+        artist_bonus: song.artist_bonus,
         score: song.final_score
       })
-  
     })
+  
+    // average values across final recommendations
+    const avg = (key) =>
+      finalRecs.reduce((sum, song) => sum + (song[key] ?? 0), 0) / finalRecs.length
+  
+    const averageStats = {
+      danceability: avg("danceability"),
+      energy: avg("energy"),
+      speechiness: avg("speechiness"),
+      liveness: avg("liveness"),
+      tempo: avg("tempo"),
+      duration_ms: avg("duration_ms"),
+      artist_popularity: avg("avg_artist_popularity"),
+      final_score: avg("final_score")
+    }
+  
+    console.log("Average values of recommended songs:")
+    console.log(averageStats)
   }
 
   function FeatureBar({ label, value }) {
@@ -222,7 +243,7 @@ export default function App(){
           <div key={song.id} className="songRow">
             <span>
               {song.name} - {formatArtist(song.artists)}
-              {song.avg_artist_popularity < 40 && " (niche)"}
+              {song.avg_artist_popularity < 60 && " (niche)"}
 
               <div className="genre">
                 {song.genre ?? "Unknown genre"}
