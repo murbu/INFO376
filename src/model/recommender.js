@@ -135,16 +135,16 @@ export function recommendSongs(userTrackIds, trackPool){
     const artist_match = userArtists.has(track.artists) ? 1 : 0
 
     // scoring
-    const similarity_score = similarity * 0.89
+    const similarity_score = similarity * 0.90
    
     if (similarity > 0.82) {
-      if (pop < 60) {
+      if (pop < 50 && pop >= 20) {
         niche_bonus = 0.04
-      } else if (pop >= 60) {
+      } else if (pop >= 70) {
         popularity_bonus = 0.04
       }
     }
-    const artist_bonus = artist_match * 0.03
+    const artist_bonus = artist_match * 0.02
 
 
     const final_score =

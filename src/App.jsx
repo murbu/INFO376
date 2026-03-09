@@ -243,7 +243,7 @@ export default function App(){
           <div key={song.id} className="songRow">
             <span>
               {song.name} - {formatArtist(song.artists)}
-              {song.avg_artist_popularity < 60 && " (niche)"}
+              {song.avg_artist_popularity < 50 && " (niche)"}
 
               <div className="genre">
                 {song.genre ?? "Unknown genre"}
